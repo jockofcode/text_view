@@ -42,55 +42,65 @@ RSpec.describe TextView::Window do
   end
   describe '#in_window? for child window' do
     context 'when the point is inside both parent and child windows' do
-      it 'returns true' do
-        expect(child_window.in_window?(10, 10)).to be(true)  # 10 is within both child and parent
+      it 'is true for a point within both child and parent' do
+        expect(child_window.in_window?(10, 10)).to be(true)
       end
     end
 
     context 'when the point is inside the child but outside the parent window' do
-      it 'returns false' do
-        expect(child_window.in_window?(25, 25)).to be(false)  # 25 is within child but outside parent in relative coords
+      it 'is false for a point within child but outside parent' do
+        expect(child_window.in_window?(25, 25)).to be(false)
       end
     end
 
     context 'when the point is outside both windows' do
-      it 'returns false' do
+      it 'is false for a point far outside both child and parent' do
         expect(child_window.in_window?(-6, -6)).to be(false)
       end
     end
 
-    context 'when the point is outside both child window' do
-      it 'returns false' do
+    context 'when the point is outside the child window' do
+      it 'is false for a point just outside the child window' do
         expect(child_window.in_window?(-1, -1)).to be(false)
       end
     end
 
-    context 'when the point is at a corner inside both windows' do
-      it 'returns true' do
-        expect(child_window.in_window?(0, 0)).to be(true)  # Top-left corner of child
-        expect(child_window.in_window?(14, 14)).to be(true)  # Bottom-right corner of child
+    context 'when the point is at a specific corner inside both windows' do
+      it 'is true for the top-left corner of the child window' do
+        expect(child_window.in_window?(0, 0)).to be(true)
+      end
+      it 'is true for the bottom-right corner of the child window that also falls within the parent' do
+        expect(child_window.in_window?(14, 14)).to be(true)
       end
     end
 
     context 'when the point is at a corner inside the child but outside the parent' do
-      it 'returns false' do
-        expect(child_window.in_window?(15, 15)).to be(false)  # Just outside parent, inside child
+      it 'is false for the bottom-left corner just outside the parent but inside the child' do
+        expect(child_window.in_window?(15, 15)).to be(false)
       end
     end
 
     context 'when the point is at an edge inside both windows' do
-      it 'returns true' do
-        expect(child_window.in_window?(0, 14)).to be(true)   # On the top edge of the child window
-        expect(child_window.in_window?(14, 14)).to be(true)  # On the bottom edge of the child window
-        expect(child_window.in_window?(14, 0)).to be(true)   # On the left edge of the child window
-        expect(child_window.in_window?(14, 14)).to be(true)  # On the right edge of the child window
+      it 'is true for a point on the top edge of the child window that also falls within the parent' do
+        expect(child_window.in_window?(0, 14)).to be(true)
+      end
+      it 'is true for a point on the bottom edge of the child window that also falls within the parent' do
+        expect(child_window.in_window?(14, 14)).to be(true)
+      end
+      it 'is true for a point on the left edge of the child window that also falls within the parent' do
+        expect(child_window.in_window?(14, 0)).to be(true)
+      end
+      it 'is true for a point on the right edge of the child window that also falls within the parent' do
+        expect(child_window.in_window?(14, 14)).to be(true)
       end
     end
 
     context 'when the point is at an edge inside the child but outside the parent' do
-      it 'returns false' do
-        expect(child_window.in_window?(0, 15)).to be(false)  # Just outside parent, on top edge of child
-        expect(child_window.in_window?(15, 0)).to be(false)  # Just outside parent, on left edge of child
+      it 'is false for a point just outside the parent but on the top edge of the child' do
+        expect(child_window.in_window?(0, 15)).to be(false)
+      end
+      it 'is false for a point just outside the parent but on the left edge of the child' do
+        expect(child_window.in_window?(15, 0)).to be(false)
       end
     end
   end
