@@ -36,8 +36,10 @@ module TextView
 
         points << [y, x, '*']
 
-        for _ in x..xe
+
+        (x + 1).upto(xe) do
           x += 1
+
           if twody1_minus_dx1 >= 0
             y += 1 if dy >= 0
             y -= 1 if dy < 0

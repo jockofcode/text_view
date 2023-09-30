@@ -12,7 +12,14 @@ module TextView
     @@color_pairs = {}
     attr_accessor :width, :height, :pos_x, :pos_y
 
-    def self.include_feature(feature_module)
+    @@included_features = []
+
+    def self.include_feature(feature_module) = @@included_features << feature_module
+    def included_features = @@included_features + @included_features
+    def self.included_features = @@included_features
+
+    def include_feature(feature_module)
+      @included_features << feature_module
       include feature_module
     end
 
@@ -40,8 +47,15 @@ module TextView
       @@color_pairs[pair_key]
     end
 
+    def parent
+      @parent
+    end
 
     def initialize(parent = nil)
+      @@included_features.each do |feature|
+        self.class.include feature
+      end
+      @included_features = []
       @@window_number += 1
       @parent = parent
       @window_number = @@window_number
@@ -50,8 +64,8 @@ module TextView
       @parent.register_child(self) if @parent
       init_screen
       init_window_dimensions
-      @render_queue = Queue.new 
-      @message_queue = Queue.new 
+      @render_queue = Queue.new
+      @message_queue = Queue.new
       debug_log("Initialized window #{@window_number}")
     end
 
@@ -175,9 +189,27 @@ module TextView
     end
 
     def in_window?(line, column)
-      line.between?(absolute_pos_y, absolute_pos_y + @height - 1) &&
-        column.between?(absolute_pos_x, absolute_pos_x + @width - 1)
+      # Convert to absolute coordinates
+      abs_line = line + absolute_pos_y
+      abs_column = column + absolute_pos_x
+
+      current_window = self
+
+      while current_window
+        inside = abs_line.between?(current_window.absolute_pos_y, current_window.absolute_pos_y + current_window.height - 1) &&
+          abs_column.between?(current_window.absolute_pos_x, current_window.absolute_pos_x + current_window.width - 1)
+
+        if inside == false
+          debug_log("y: #{abs_line}, x: #{abs_column} Not In Window. abs_y: #{current_window.absolute_pos_y}, abs_x: #{current_window.absolute_pos_x}")
+          return false
+        end
+
+        current_window = current_window.parent
+      end
+
+      true
     end
+
 
     def draw_char(line, column, char, char_color, bg_color)
       # Truncate the string if its length exceeds the window's width

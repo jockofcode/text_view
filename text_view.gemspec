@@ -9,5 +9,5 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/jockofcode/text_view'
   spec.license       = 'MIT'
   spec.add_runtime_dependency 'curses', '~> 1.4'
+  spec.add_development_dependency 'rspec', '~> 3.10'
 end
-
