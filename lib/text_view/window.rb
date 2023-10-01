@@ -64,6 +64,7 @@ module TextView
       @parent.register_child(self) if @parent
       init_screen
       init_window_dimensions
+      init_colors
       @render_queue = Queue.new
       @message_queue = Queue.new
       debug_log("Initialized window #{@window_number}")
@@ -178,6 +179,19 @@ module TextView
       Curses.stdscr.keypad(true)
       Curses.timeout = 0 # Non-blocking input
       Curses.clear
+    end
+
+    def init_colors
+      if Curses.can_change_color?
+        Curses.init_color(Curses::COLOR_BLACK, 0, 0, 0)
+        Curses.init_color(Curses::COLOR_BLUE, 0, 0, 1000)
+        Curses.init_color(Curses::COLOR_CYAN, 0, 1000, 1000)
+        Curses.init_color(Curses::COLOR_GREEN, 0, 1000, 0)
+        Curses.init_color(Curses::COLOR_MAGENTA, 1000, 0, 1000)
+        Curses.init_color(Curses::COLOR_RED, 1000, 0, 0)
+        Curses.init_color(Curses::COLOR_WHITE, 1000, 1000, 1000)
+        Curses.init_color(Curses::COLOR_YELLOW, 1000, 1000, 0)
+      end
     end
 
     def absolute_pos_x

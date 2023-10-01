@@ -1,8 +1,4 @@
-# Require the necessary files
 require_relative '../lib/text_view'
-# require_relative 'lib/text_view/window'
-# require_relative 'lib/text_view/position'
-# require_relative 'lib/text_view/draw'
 
 # Initialize the window and include features
 TextView::Window.include_feature(TextView::Position) # Assuming Position is a module you want to include
