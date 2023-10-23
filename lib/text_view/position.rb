@@ -2,6 +2,10 @@ require 'curses'
 
 module TextView
   module Position
+    def initialize(parent = nil)
+      puts "Position"
+      super(parent) if defined?(super)
+    end
     def set_right_of(other_window)
       old_pos = "{ y: #{self.pos_y}, x: #{self.pos_x} }"
       self.pos_x = other_window.pos_x + other_window.width

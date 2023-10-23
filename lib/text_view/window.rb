@@ -1,4 +1,3 @@
-require 'curses'
 
 module TextView
   module Error
@@ -15,13 +14,7 @@ module TextView
     @@included_features = []
 
     def self.include_feature(feature_module) = @@included_features << feature_module
-    def included_features = @@included_features + @included_features
     def self.included_features = @@included_features
-
-    def include_feature(feature_module)
-      @included_features << feature_module
-      include feature_module
-    end
 
     def debug_log(message)
       if ENV['DEBUG_LOG']
@@ -35,18 +28,6 @@ module TextView
       end
     end
 
-    def initialize_color_pair(char_color, bg_color)
-      pair_key = "#{char_color}_#{bg_color}"
-
-      unless @@color_pairs[pair_key]
-        pair_id = @@color_pairs.size + 1
-        Curses.init_pair(pair_id, char_color, bg_color)
-        @@color_pairs[pair_key] = pair_id
-      end
-
-      @@color_pairs[pair_key]
-    end
-
     def parent
       @parent
     end
@@ -55,43 +36,36 @@ module TextView
       @@included_features.each do |feature|
         self.class.include feature
       end
-      @included_features = []
       @@window_number += 1
       @parent = parent
       @window_number = @@window_number
       @children = []
       @message_registry = {}
       @parent.register_child(self) if @parent
-      init_screen
-      init_window_dimensions
-      init_colors
       @render_queue = Queue.new
       @message_queue = Queue.new
+      init_window_dimensions
       debug_log("Initialized window #{@window_number}")
     end
 
-    def map_color(symbol)
-      case symbol
-      when :black
-        Curses::COLOR_BLACK
-      when :blue
-        Curses::COLOR_BLUE
-      when :cyan
-        Curses::COLOR_CYAN
-      when :green
-        Curses::COLOR_GREEN
-      when :magenta
-        Curses::COLOR_MAGENTA
-      when :red
-        Curses::COLOR_RED
-      when :white
-        Curses::COLOR_WHITE
-      when :yellow
-        Curses::COLOR_YELLOW
-      else
-        Curses::COLOR_WHITE # Default color
-      end
+    def screen_width
+        begin
+          rows, cols = IO.console.winsize
+          cols
+        rescue NoMethodError
+          80
+        end
     end
+
+    def screen_height
+        begin
+          rows, cols = IO.console.winsize
+          rows
+        rescue NoMethodError
+          25
+        end
+    end
+
 
     def receive_message(message_type, *args)
       entries = @message_registry[message_type] || []
@@ -163,8 +137,8 @@ module TextView
         @pos_y = @parent.pos_y
       else
         debug_log "(Parent) assigning window dimensions"
-        @width = Curses.cols
-        @height = Curses.lines
+        @width = screen_width
+        @height = screen_height
         @pos_x = 0
         @pos_y = 0
       end
@@ -172,26 +146,9 @@ module TextView
     end
 
     def init_screen
-      Curses.start_color
-      Curses.init_screen
-      Curses.cbreak
-      Curses.noecho
-      Curses.stdscr.keypad(true)
-      Curses.timeout = 0 # Non-blocking input
-      Curses.clear
     end
 
-    def init_colors
-      if Curses.can_change_color?
-        Curses.init_color(Curses::COLOR_BLACK, 0, 0, 0)
-        Curses.init_color(Curses::COLOR_BLUE, 0, 0, 1000)
-        Curses.init_color(Curses::COLOR_CYAN, 0, 1000, 1000)
-        Curses.init_color(Curses::COLOR_GREEN, 0, 1000, 0)
-        Curses.init_color(Curses::COLOR_MAGENTA, 1000, 0, 1000)
-        Curses.init_color(Curses::COLOR_RED, 1000, 0, 0)
-        Curses.init_color(Curses::COLOR_WHITE, 1000, 1000, 1000)
-        Curses.init_color(Curses::COLOR_YELLOW, 1000, 1000, 0)
-      end
+    def destroy_screen
     end
 
     def absolute_pos_x
@@ -224,29 +181,26 @@ module TextView
       true
     end
 
-
-    def draw_char(line, column, char, char_color, bg_color)
-      # Truncate the string if its length exceeds the window's width
+    def trim_to_window(line, column, char)
       if char.is_a?(String)
         remaining_space = @width - column
         char = char.slice(0, remaining_space)
       end
-
-      char_color = map_color(char_color)
-      bg_color = map_color(bg_color)
-
-      color_pair_id = initialize_color_pair(char_color, bg_color)
-
-      if in_window?(line, column)
-        Curses.attron(Curses.color_pair(color_pair_id)) do
-          Curses.setpos(line + absolute_pos_y, column + absolute_pos_x)
-          Curses.addstr(char)
-        end
-        # debug_log("drew #{char} on line #{line}, column #{column}, in #{char_color} on #{bg_color}")
-      else
-        # debug_log("Not in window to draw #{char} on line #{line}, column #{column}")
-      end
     end
+    def draw_char(line, column, char, char_color, bg_color)
+      return unless in_window?(line, column)
+      trim_to_window(line,column,char)
+
+
+      abs_line = line + absolute_pos_y
+      abs_column = column + absolute_pos_x
+      raw_draw_char(abs_line, abs_column, char, char_color, bg_color)
+    end
+
+    def raw_draw_char(abs_line, abs_column, char, char_color, bg_color)
+      print "\033[#{abs_line + 1};#{abs_column + 1}H#{char}"
+    end
+
 
     def draw(&block)
       debug_log("Start position: { x: #{@pos_x}, y: #{@pos_y} }, size: { w: #{@width}, h: #{@height} }")
@@ -272,6 +226,18 @@ module TextView
       @render_queue.enq(block)
     end
 
+    def getc
+      @@char_input ||= Thread.new do
+        @input_char = nil
+        loop do
+          @input_char = $stdin.getch
+        end
+      end
+      c = @input_char
+      @input_char = nil
+      c
+    end
+
     def run
       if @parent
         raise TextView::Error::ONLY_ROOT_WINDOW_CAN_RUN
@@ -283,7 +249,7 @@ module TextView
       @loop_pause = 1.0 / @loop_speed.to_f
 
       while !@quit_flag
-        key = Curses.getch
+        key = getc
         if key
           debug_log("keypress received: #{key}")
           @message_queue.enq({ message_type: :key_press, args: [key] })
@@ -303,8 +269,7 @@ module TextView
         sleep @loop_pause
       end
 
-      Curses.close_screen
+      destroy_screen
     end
-
   end
 end
